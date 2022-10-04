@@ -18,6 +18,22 @@ double XWIDTH=3.0;
 double XHEIGHT=(XWIDTH*winHeight)/winWidth;
 
 
+
+
+std::ostream & operator<<(std::ostream &out, const Kock &op) {
+  for(int i=0;i<op.nPoints;++i)
+    out << "["<<op.data[2*i]<<","<<op.data[2*i+1]<<"],"<<std::endl;
+  return out;
+}
+
+void pixToXY(int px, int py, double &x, double &y) {
+  x=CENTERX-0.5*XWIDTH + XWIDTH*(px/(winWidth-1.0));
+  y=CENTERY-0.5*XHEIGHT + XWIDTH*(py/(winWidth-1.0));
+  return;
+}
+
+
+
 class Fractal {
 public:
   double ox;
@@ -59,15 +75,16 @@ public:
         double a[2] = {prev.data[2*i],prev.data[2*i+1]};
         double b[2] = {prev.data[2*((i+1)%prev.nPoints)],
                         prev.data[2*((i+1)%prev.nPoints)+1]};
-        std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl;
+        //std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl<<std::endl;
         data[8*i] = a[0];
         data[8*i+1] = a[1];
-        data[8*i+2] = (a[0]+b[0])*3.333333333333333e-01;
-        data[8*i+3] = (a[1]+b[1])*3.333333333333333e-01;
-        //data[8*i+4] = (b[1]-a[1])*8.660254037844386e-01;
-        //data[8*i+5] = (a[0]-b[0])*8.660254037844386e-01;
-        data[8*i+6] = (a[0]+b[0])*6.666666666666666e-01;
-        data[8*i+7] = (a[1]+b[1])*6.666666666666666e-01;
+        data[8*i+2] = a[0]+(b[0]-a[0])*3.333333333333333e-01;
+        data[8*i+3] = a[1]+(b[1]-a[1])*3.333333333333333e-01;
+        data[8*i+6] = a[0]+(b[0]-a[0])*6.666666666666666e-01;
+        data[8*i+7] = a[1]+(b[1]-a[1])*6.666666666666666e-01;
+        data[8*i+4] = a[0]+0.5*(b[0]-a[0])+(b[1]-a[1])*2.886751345948129e-01;
+        data[8*i+5] = a[1]+0.5*(b[1]-a[1])+(a[0]-b[0])*2.886751345948129e-01;
+        
       }
     }
     return;
@@ -77,21 +94,9 @@ public:
   }
 
   void draw (Display *dis, Window win) {
-
+    
   }
 };
-
-std::ostream & operator<<(std::ostream &out, const Kock &op) {
-  for(int i=0;i<op.nPoints;++i)
-    out << "["<<op.data[2*i]<<","<<op.data[2*i+1]<<"],"<<std::endl;
-  return out;
-}
-
-void pixToXY(int px, int py, double &x, double &y) {
-  x=CENTERX-0.5*XWIDTH + XWIDTH*(px/(winWidth-1.0));
-  y=CENTERY-0.5*XHEIGHT + XWIDTH*(py/(winWidth-1.0));
-  return;
-}
 
 int main(void) {
   //std::cout << std::fixed << std::setprecision(3);
@@ -140,7 +145,9 @@ int main(void) {
 
 
 
-  Kock kock(1);
-  std::cout << kock << std::endl;
+  while(1) {
+    Kock kock(2);
+    std::cout << kock << std::endl;
+  }
   return 0;
 }
