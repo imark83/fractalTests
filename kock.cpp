@@ -32,6 +32,10 @@ void pixToXY(int px, int py, double &x, double &y) {
   return;
 }
 
+unsigned long _RGB(unsigned char r,unsigned char g, unsigned char b){
+    return b + (g<<8) + (r<<16);
+}
+
 
 
 class Fractal {
@@ -94,60 +98,58 @@ public:
   }
 
   void draw (Display *dis, Window win) {
-    
+    XSetForeground(display, XDefaultGC(dis,s), _RGB(255,0,127));
+
   }
 };
 
 int main(void) {
-  //std::cout << std::fixed << std::setprecision(3);
-  // Display *dis;
-  // Window win;
-  // XEvent e;
-  // int s;
+  std::cout << std::fixed << std::setprecision(3);
+  Kock kock(2);
 
+  Display *dis;
+  Window win;
+  XEvent e;
+  int s;
 
-
-  // dis = XOpenDisplay(NULL);
-  // if (dis == NULL) {
-  //   fprintf(stderr, "Cannot open display\n");
-  //   exit(1);
-  // }
-
-  // s = DefaultScreen(dis);
-  // win = XCreateSimpleWindow(
-  //       dis, 
-  //       RootWindow(dis, s), 
-  //       10, 10, 
-  //       800, 
-  //       600, 
-  //       1,
-  //       BlackPixel(dis, s), 
-  //       WhitePixel(dis, s));
-
-  // XSelectInput(dis, win, ExposureMask | KeyPressMask | ButtonPressMask);
-  // XMapWindow(dis, win);
-
-  // while (1) {
-  //   XNextEvent(dis, &e);
-  //   if (e.type == Expose) {
-        
-  //     }
-  //   if (e.type == ButtonPress) {
-  //     pixToXY(e.xbutton.x,e.xbutton.y,CENTERX,CENTERY);
-  //   }
-  //   if (e.type == KeyPress){
-  //     break;
-  //   }
-  // }
-
-  // XDestroyWindow(dis,win);
-  // XCloseDisplay(dis);
-
-
-
-  while(1) {
-    Kock kock(2);
-    std::cout << kock << std::endl;
+  dis = XOpenDisplay(NULL);
+  if (dis == NULL) {
+    fprintf(stderr, "Cannot open display\n");
+    exit(1);
   }
+
+  s = DefaultScreen(dis);
+  win = XCreateSimpleWindow(
+        dis, 
+        RootWindow(dis, s), 
+        10, 10, 
+        800, 
+        600, 
+        1,
+        BlackPixel(dis, s), 
+        WhitePixel(dis, s));
+
+  XSelectInput(dis, win, ExposureMask | KeyPressMask | ButtonPressMask);
+  XMapWindow(dis, win);
+
+  while (1) {
+    XNextEvent(dis, &e);
+    if (e.type == Expose) {
+        // 
+    }
+    if (e.type == ButtonPress) {
+      pixToXY(e.xbutton.x,e.xbutton.y,CENTERX,CENTERY);
+    }
+    if (e.type == KeyPress){
+      break;
+    }
+  }
+
+  XDestroyWindow(dis,win);
+  XCloseDisplay(dis);
+
+
+
+
   return 0;
 }
