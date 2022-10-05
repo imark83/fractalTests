@@ -226,16 +226,23 @@ int main(void) {
     }
     if (e.type == ButtonPress) {
       if(e.xbutton.button == 4) {
-        kock.incIter();
+        XWIDTH = XWIDTH/2.0;
+        XHEIGHT=(XWIDTH*winHeight)/winWidth;
       } 
       if(e.xbutton.button == 5) {
-        kock.decIter();
+        XWIDTH = XWIDTH*2.0;
+        XHEIGHT=(XWIDTH*winHeight)/winWidth;
+      }
+      if(e.xbutton.button == 1) {
+        pixToXY(e.xbutton.x,e.xbutton.y,CENTERX,CENTERY);
       }
       std::cout << "draw!"<<std::endl;
       kock.draw(dis,win,1);
       XFlush(dis);
     }
     if (e.type == KeyPress){
+
+      std::cout << e.xkey.keycode << std::endl;
       break;
     }
   }
