@@ -193,6 +193,7 @@ std::ostream & operator<<(std::ostream &out, const Kock &op) {
 int main(void) {
   std::cout << std::fixed << std::setprecision(3);
   Kock kock;
+  int solid=0;
 
   Display *dis;
   Window win;
@@ -222,21 +223,36 @@ int main(void) {
   while (1) {
     XNextEvent(dis, &e);
     if (e.type == Expose) {
-      kock.draw(dis,win,1);
+      kock.draw(dis,win,solid);
     }
     if (e.type == ButtonPress) {
+      if(e.xbutton.button == 1) {
+        pixToXY(e.xbutton.x,e.xbutton.y,CENTERX,CENTERY);
+      } 
       if(e.xbutton.button == 4) {
-        kock.incIter();
+        XWIDTH/=1.2;
+        XHEIGHT=(XWIDTH*winHeight)/winWidth;
       } 
       if(e.xbutton.button == 5) {
-        kock.decIter();
+        XWIDTH*=1.2;
+        XHEIGHT=(XWIDTH*winHeight)/winWidth;
       }
       std::cout << "draw!"<<std::endl;
-      kock.draw(dis,win,1);
+      kock.draw(dis,win,solid);
       XFlush(dis);
     }
     if (e.type == KeyPress){
-      break;
+      std::cout << e.xkey.keycode << std::endl;
+      unsigned int key = e.xkey.keycode;
+      if(key == 38){
+        kock.incIter();
+      } else if (key == 52){
+        kock.decIter();
+      } else {
+        break;
+      }
+      kock.draw(dis,win,solid);
+      XFlush(dis);
     }
   }
 
