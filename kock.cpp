@@ -20,15 +20,16 @@ double XHEIGHT=(XWIDTH*winHeight)/winWidth;
 
 
 
-std::ostream & operator<<(std::ostream &out, const Kock &op) {
-  for(int i=0;i<op.nPoints;++i)
-    out << "["<<op.data[2*i]<<","<<op.data[2*i+1]<<"],"<<std::endl;
-  return out;
-}
-
-void pixToXY(int px, int py, double &x, double &y) {
+void pixToXY(short px, short py, double &x, double &y) {
   x=CENTERX-0.5*XWIDTH + XWIDTH*(px/(winWidth-1.0));
   y=CENTERY-0.5*XHEIGHT + XWIDTH*(py/(winWidth-1.0));
+  return;
+}
+
+void XYToPix(double x, double y, short &px, short &py) {
+  px=(short) floor((x-CENTERX+0.5*XWIDTH)/XWIDTH*(winWidth-1.0));
+  py=(short) floor((y-CENTERY+0.5*XHEIGHT)/XWIDTH*(winWidth-1.0));
+  
   return;
 }
 
@@ -51,7 +52,9 @@ public:
       data(NULL),nPoints(0),nIter(0) {}
   ~Fractal () {}
 
-  virtual void draw(Display *dis, Window win) = 0;
+  virtual void draw(Display *dis, Window win, int solid=0) = 0;
+  virtual void incIter() = 0;
+  virtual void decIter() = 0;
 };
 
 class Kock : public Fractal {
@@ -97,15 +100,99 @@ public:
     free(data);
   }
 
-  void draw (Display *dis, Window win) {
-    XSetForeground(display, XDefaultGC(dis,s), _RGB(255,0,127));
+  void draw (Display *dis, Window win, int solid = 0) {
+    XClearWindow(dis,win);
+    std::cout << data[0] << "," << data[1] << std::endl;
+    int s=XDefaultScreen(dis);
+    XSetForeground(dis, XDefaultGC(dis,s), _RGB(0,0,0x8B));
 
+
+    if(solid) {
+      XPoint *a = (XPoint*) malloc((this->nPoints)*sizeof(XPoint));
+      for(int i=0;i<nPoints;++i) {
+        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+      }
+      XFillPolygon(
+        dis,
+        win,
+        XDefaultGC(dis,s),
+        a,
+        nPoints,
+        Nonconvex,
+        CoordModeOrigin);
+      free(a);
+    } else {
+      XPoint *a = (XPoint*) malloc((this->nPoints+1)*sizeof(XPoint));
+      for(int i=0;i<nPoints;++i) {
+        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+      }
+      a[this->nPoints].x=a[0].x;a[this->nPoints].y=a[0].y;
+      XDrawLines(
+        dis,
+        win,
+        XDefaultGC(dis,s),
+        a,
+        nPoints+1,
+        CoordModeOrigin);
+      free(a);
+    }
+  }
+
+  void incIter () {
+    double *olddata = data;
+
+    nPoints = nPoints*4;
+    std::cout << "npoints = " << nPoints << std::endl;
+    nIter++;
+    data = (double *) malloc (2*nPoints*sizeof(double));
+
+    for(int i=0; i<nPoints/4; i=i+1){ // counter for prev fractal
+      double a[2] = {olddata[2*i],olddata[2*i+1]};
+      double b[2] = {olddata[2*((i+1)%(nPoints/4))],
+                      olddata[2*((i+1)%(nPoints/4))+1]};
+      //std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl<<std::endl;
+      data[8*i] = a[0];
+      data[8*i+1] = a[1];
+      data[8*i+2] = a[0]+(b[0]-a[0])*3.333333333333333e-01;
+      data[8*i+3] = a[1]+(b[1]-a[1])*3.333333333333333e-01;
+      data[8*i+6] = a[0]+(b[0]-a[0])*6.666666666666666e-01;
+      data[8*i+7] = a[1]+(b[1]-a[1])*6.666666666666666e-01;
+      data[8*i+4] = a[0]+0.5*(b[0]-a[0])+(b[1]-a[1])*2.886751345948129e-01;
+      data[8*i+5] = a[1]+0.5*(b[1]-a[1])+(a[0]-b[0])*2.886751345948129e-01;
+    }
+
+    free(olddata);
+    return;
+  }
+
+  void decIter () {
+    if (nIter == 0) return;
+    double *olddata = data;
+    nPoints = nPoints/4;
+    std::cout << "npoints = " << nPoints << std::endl;
+
+    nIter--;
+    data = (double *) malloc (2*nPoints*sizeof(double));
+    for(int i=0; i<nPoints; i=i+1){
+      data[2*i] = olddata[8*i];
+      data[2*i+1] = olddata[8*i+1];
+    }
+    free(olddata);
+    return;
   }
 };
 
+
+
+std::ostream & operator<<(std::ostream &out, const Kock &op) {
+  for(int i=0;i<op.nPoints;++i)
+    out << "["<<op.data[2*i]<<","<<op.data[2*i+1]<<"],"<<std::endl;
+  return out;
+}
+
 int main(void) {
   std::cout << std::fixed << std::setprecision(3);
-  Kock kock(2);
+  Kock kock;
 
   Display *dis;
   Window win;
@@ -135,10 +222,18 @@ int main(void) {
   while (1) {
     XNextEvent(dis, &e);
     if (e.type == Expose) {
-        // 
+      kock.draw(dis,win,1);
     }
     if (e.type == ButtonPress) {
-      pixToXY(e.xbutton.x,e.xbutton.y,CENTERX,CENTERY);
+      if(e.xbutton.button == 4) {
+        kock.incIter();
+      } 
+      if(e.xbutton.button == 5) {
+        kock.decIter();
+      }
+      std::cout << "draw!"<<std::endl;
+      kock.draw(dis,win,1);
+      XFlush(dis);
     }
     if (e.type == KeyPress){
       break;
