@@ -84,9 +84,9 @@ public:
         //std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl<<std::endl;
         data[6*i] = a[0];
         data[6*i+1] = a[1];
-        data[6*i+2] = a[0]-0.5*width;
-        data[6*i+3] = a[1]+8.660254037844386e-01*width;
-        data[6*i+4] = a[0]+0.5*width;
+        data[6*i+2] = a[0]-0.5*scale;
+        data[6*i+3] = a[1]+8.660254037844386e-01*scale;
+        data[6*i+4] = a[0]+0.5*scale;
         data[6*i+5] = data[6*i+3];        
       }
     }
@@ -104,32 +104,38 @@ public:
 
 
     if(solid) {
-      XPoint *a = (XPoint*) malloc((this->nPoints)*sizeof(XPoint));
+      XPoint *a = (XPoint*) malloc(3*sizeof(XPoint));
       for(int i=0;i<nPoints;++i) {
-        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+        XYToPix(data[2*i],data[2*i+1],a[0].x,a[0].y);
+        XYToPix(data[2*i]-0.5*scale,data[2*i+1]+8.660254037844386e-01*scale,a[1].x,a[1].y);
+        XYToPix(data[2*i]+0.5*scale,data[2*i+1]+8.660254037844386e-01*scale,a[2].x,a[2].y);
+
+        XFillPolygon(
+          dis,
+          win,
+          XDefaultGC(dis,s),
+          a,
+          3,
+          Nonconvex,
+          CoordModeOrigin);
       }
-      XFillPolygon(
-        dis,
-        win,
-        XDefaultGC(dis,s),
-        a,
-        nPoints,
-        Nonconvex,
-        CoordModeOrigin);
       free(a);
     } else {
-      XPoint *a = (XPoint*) malloc((this->nPoints+1)*sizeof(XPoint));
+      XPoint *a = (XPoint*) malloc(4*sizeof(XPoint));
       for(int i=0;i<nPoints;++i) {
-        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+        XYToPix(data[2*i],data[2*i+1],a[0].x,a[0].y);
+        XYToPix(data[2*i]-0.5*scale,data[2*i+1]+8.660254037844386e-01*scale,a[1].x,a[1].y);
+        XYToPix(data[2*i]+0.5*scale,data[2*i+1]+8.660254037844386e-01*scale,a[2].x,a[2].y);
+        XYToPix(data[2*i],data[2*i+1],a[3].x,a[3].y);
+
+        XDrawLines(
+          dis,
+          win,
+          XDefaultGC(dis,s),
+          a,
+          4,
+          CoordModeOrigin);
       }
-      a[this->nPoints].x=a[0].x;a[this->nPoints].y=a[0].y;
-      XDrawLines(
-        dis,
-        win,
-        XDefaultGC(dis,s),
-        a,
-        nPoints+1,
-        CoordModeOrigin);
       free(a);
     }
   }
@@ -137,24 +143,22 @@ public:
   void incIter () {
     double *olddata = data;
 
-    nPoints = nPoints*4;
+    nPoints = nPoints*3;
     std::cout << "npoints = " << nPoints << std::endl;
     nIter++;
     data = (double *) malloc (2*nPoints*sizeof(double));
+    scale/=2.0;
 
-    for(int i=0; i<nPoints/4; i=i+1){ // counter for prev fractal
+    
+    for(int i=0; i<nPoints/3; i=i+1){ // counter for prev fractal
       double a[2] = {olddata[2*i],olddata[2*i+1]};
-      double b[2] = {olddata[2*((i+1)%(nPoints/4))],
-                      olddata[2*((i+1)%(nPoints/4))+1]};
       //std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl<<std::endl;
-      data[8*i] = a[0];
-      data[8*i+1] = a[1];
-      data[8*i+2] = a[0]+(b[0]-a[0])*3.333333333333333e-01;
-      data[8*i+3] = a[1]+(b[1]-a[1])*3.333333333333333e-01;
-      data[8*i+6] = a[0]+(b[0]-a[0])*6.666666666666666e-01;
-      data[8*i+7] = a[1]+(b[1]-a[1])*6.666666666666666e-01;
-      data[8*i+4] = a[0]+0.5*(b[0]-a[0])+(b[1]-a[1])*2.886751345948129e-01;
-      data[8*i+5] = a[1]+0.5*(b[1]-a[1])+(a[0]-b[0])*2.886751345948129e-01;
+      data[6*i] = a[0];
+      data[6*i+1] = a[1];
+      data[6*i+2] = a[0]-0.5*scale;
+      data[6*i+3] = a[1]+8.660254037844386e-01*scale;
+      data[6*i+4] = a[0]+0.5*scale;
+      data[6*i+5] = data[6*i+3];        
     }
 
     free(olddata);
@@ -164,14 +168,16 @@ public:
   void decIter () {
     if (nIter == 0) return;
     double *olddata = data;
-    nPoints = nPoints/4;
+    nPoints = nPoints/3;
     std::cout << "npoints = " << nPoints << std::endl;
 
     nIter--;
     data = (double *) malloc (2*nPoints*sizeof(double));
+    scale*=2.0;
+
     for(int i=0; i<nPoints; i=i+1){
-      data[2*i] = olddata[8*i];
-      data[2*i+1] = olddata[8*i+1];
+      data[2*i] = olddata[6*i];
+      data[2*i+1] = olddata[6*i+1];
     }
     free(olddata);
     return;
@@ -188,8 +194,8 @@ std::ostream & operator<<(std::ostream &out, const Sierpinski &op) {
 
 int main(void) {
   std::cout << std::fixed << std::setprecision(3);
-  Sierpinski kock;
-  int solid=1;
+  Sierpinski sierpinski;
+  int solid=0;
 
   Display *dis;
   Window win;
@@ -219,7 +225,7 @@ int main(void) {
   while (1) {
     XNextEvent(dis, &e);
     if (e.type == Expose) {
-      kock.draw(dis,win,solid);
+      sierpinski.draw(dis,win,solid);
     }
     if (e.type == ButtonPress) {
       if(e.xbutton.button == 1) {
@@ -236,20 +242,20 @@ int main(void) {
         std::cout << "Width = " << XWIDTH << std::endl;
       }
       std::cout << "draw!"<<std::endl;
-      kock.draw(dis,win,solid);
+      sierpinski.draw(dis,win,solid);
       XFlush(dis);
     }
     if (e.type == KeyPress){
       std::cout << e.xkey.keycode << std::endl;
       unsigned int key = e.xkey.keycode;
       if(key == 38){
-        kock.incIter();
+        sierpinski.incIter();
       } else if (key == 52){
-        kock.decIter();
+        sierpinski.decIter();
       } else {
         break;
       }
-      kock.draw(dis,win,solid);
+      sierpinski.draw(dis,win,solid);
       XFlush(dis);
     }
   }
