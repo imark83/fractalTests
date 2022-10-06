@@ -43,12 +43,11 @@ class Fractal {
 public:
   double ox;
   double oy;
-  double xwidth;
   double *data;
   unsigned int nPoints;
   unsigned int nIter;
 
-  Fractal () : ox(0.0),oy(0.0),xwidth(0.0),
+  Fractal () : ox(0.0),oy(0.0),
       data(NULL),nPoints(0),nIter(0) {}
   ~Fractal () {}
 
@@ -59,12 +58,10 @@ public:
 
 class Kock : public Fractal {
 public:
-  Kock (int OPnIter = 0, double OPox = 0.0, double OPoy=0.0,
-        double OPxwidth = 0.0) {
+  Kock (int OPnIter = 0, double OPox = 0.0, double OPoy=0.0) {
     nIter = OPnIter;
     ox = OPox;
     oy = OPoy;
-    xwidth = OPxwidth;
 
     
     nPoints = pow(4,nIter)*3;
@@ -77,7 +74,7 @@ public:
       data[4] = 0.0+ox;
       data[5] = 1.0+oy;
     } else {
-      Kock prev(nIter-1,ox,oy,xwidth);
+      Kock prev(nIter-1,ox,oy);
       for(int i=0; i<prev.nPoints; i=i+1){ // counter for prev fractal
         double a[2] = {prev.data[2*i],prev.data[2*i+1]};
         double b[2] = {prev.data[2*((i+1)%prev.nPoints)],
@@ -193,7 +190,7 @@ std::ostream & operator<<(std::ostream &out, const Kock &op) {
 int main(void) {
   std::cout << std::fixed << std::setprecision(3);
   Kock kock;
-  int solid=0;
+  int solid=1;
 
   Display *dis;
   Window win;

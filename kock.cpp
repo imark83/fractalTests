@@ -37,18 +37,23 @@ unsigned long _RGB(unsigned char r,unsigned char g, unsigned char b){
     return b + (g<<8) + (r<<16);
 }
 
+unsigned long long ipow(unsigned long long op1, unsigned int op2) {
+  if(op2==0) return 1;
+  unsigned long long aux = ipow(op1,op2/2);
+  if(op2%2==0) return aux*aux;
+  return aux*aux*op1;
+}
 
 
 class Fractal {
 public:
   double ox;
   double oy;
-  double xwidth;
   double *data;
-  unsigned int nPoints;
+  unsigned long long nPoints;
   unsigned int nIter;
 
-  Fractal () : ox(0.0),oy(0.0),xwidth(0.0),
+  Fractal () : ox(0.0),oy(0.0),
       data(NULL),nPoints(0),nIter(0) {}
   ~Fractal () {}
 
@@ -59,15 +64,13 @@ public:
 
 class Kock : public Fractal {
 public:
-  Kock (int OPnIter = 0, double OPox = 0.0, double OPoy=0.0,
-        double OPxwidth = 0.0) {
+  Kock (int OPnIter = 0, double OPox = 0.0, double OPoy=0.0) {
     nIter = OPnIter;
     ox = OPox;
     oy = OPoy;
-    xwidth = OPxwidth;
 
     
-    nPoints = pow(4,nIter)*3;
+    nPoints = ipow(4,nIter)*3;
     data = (double *) malloc (2*nPoints*sizeof(double));
     if (nIter == 0){
       data[0] = -8.660254037844386e-01+ox;
@@ -77,7 +80,7 @@ public:
       data[4] = 0.0+ox;
       data[5] = 1.0+oy;
     } else {
-      Kock prev(nIter-1,ox,oy,xwidth);
+      Kock prev(nIter-1,ox,oy);
       for(int i=0; i<prev.nPoints; i=i+1){ // counter for prev fractal
         double a[2] = {prev.data[2*i],prev.data[2*i+1]};
         double b[2] = {prev.data[2*((i+1)%prev.nPoints)],

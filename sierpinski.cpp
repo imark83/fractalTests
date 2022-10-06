@@ -5,14 +5,14 @@
 #include <complex>
 
 #include <iostream>
+#include <ios>
+#include <iomanip>
 
-
-typedef std::complex<double> Complex_t;
 
 
 int winWidth = 800;
 int winHeight = 600;
-double CENTERX=-0.5;
+double CENTERX=0.0;
 double CENTERY=0.0;
 double XWIDTH=3.0;
 double XHEIGHT=(XWIDTH*winHeight)/winWidth;
@@ -20,134 +20,245 @@ double XHEIGHT=(XWIDTH*winHeight)/winWidth;
 
 
 
-
-int newton (double x, double y) {
-  Complex_t x1(x,y), x0;
-  do {
-    x0 = x1;
-    x1 = x0 - (x0*x0*x0 - 1.0)/(3.0*x0*x0);
-  } while (abs(x1-x0) > 0.1);
-  if (x1.real() > 0)
-    return 0;
-  if (x1.imag() > 0)
-    return 1;
-  return 2;
-}
-
-
-
-double mandelbrot (double x, double y) {
-  Complex_t c(x,y), z;
-  int maxIter=500;
-  do {
-    z=z*z+c;
-  } while (abs(z) < 4  && maxIter-- !=0);
-  return (abs(z));
-}
-
-void pixToXY(int px, int py, double &x, double &y) {
+void pixToXY(short px, short py, double &x, double &y) {
   x=CENTERX-0.5*XWIDTH + XWIDTH*(px/(winWidth-1.0));
   y=CENTERY-0.5*XHEIGHT + XWIDTH*(py/(winWidth-1.0));
   return;
 }
 
-void drawNewton (Display *dis, int s,Window &win, GC gc){
+void XYToPix(double x, double y, short &px, short &py) {
+  px=(short) floor((x-CENTERX+0.5*XWIDTH)/XWIDTH*(winWidth-1.0));
+  py=(short) floor((y-CENTERY+0.5*XHEIGHT)/XWIDTH*(winWidth-1.0));
+  
+  return;
+}
 
-  XColor Red, Green, Blue;
-  XAllocNamedColor(dis, DefaultColormap(dis,s), "red", &Red, &Red);
-  XAllocNamedColor(dis, DefaultColormap(dis,s), "green", &Green, &Green);
-  XAllocNamedColor(dis, DefaultColormap(dis,s), "blue", &Blue, &Blue);
-  //const char *msg = "Hello, World!";
+unsigned long _RGB(unsigned char r,unsigned char g, unsigned char b){
+    return b + (g<<8) + (r<<16);
+}
 
-  //XFillRectangle(dis, win, DefaultGC(dis, s), 1, 1, 10, 10);
-  //XDrawString(dis, win, DefaultGC(dis, s), 10, 50, msg, strlen(msg));
-  double x,y;
-  for(int px=0;px<winWidth;++px) for(int py=0;py<winHeight;++py) {
-    pixToXY(px,py,x,y);
-    int c=newton(x,y);
-    if(c==0) {
-      XSetForeground(dis, gc, Green.pixel);
-      XDrawPoint(dis,win,gc,px,py);
-    } else if (c==1) {
-      XSetForeground(dis, gc, Blue.pixel);
-      XDrawPoint(dis,win,gc,px,py);
+
+unsigned long long ipow(unsigned long long op1, unsigned int op2) {
+  if(op2==0) return 1;
+  unsigned long long aux = ipow(op1,op2/2);
+  if(op2%2==0) return aux*aux;
+  return aux*aux*op1;
+}
+
+class Fractal {
+public:
+  double ox;
+  double oy;
+  double *data;
+  unsigned int nPoints;
+  unsigned int nIter;
+
+  Fractal () : ox(0.0),oy(0.0),
+      data(NULL),nPoints(0),nIter(0) {}
+  ~Fractal () {}
+
+  virtual void draw(Display *dis, Window win, int solid=0) = 0;
+  virtual void incIter() = 0;
+  virtual void decIter() = 0;
+};
+
+class Sierpinski : public Fractal {
+public:
+  double scale;
+  Sierpinski (int OPnIter = 0, double OPox = 0.0, double OPoy=0.0) {
+    nIter = OPnIter;
+    ox = OPox;
+    oy = OPoy;
+    scale=1.0/(1<<nIter);
+
+    
+    nPoints = ipow(3,nIter);
+    data = (double *) malloc (2*nPoints*sizeof(double));
+    if (nIter == 0){
+      data[0] = 0.0+ox;
+      data[1] = -1.0+oy;
     } else {
-      XSetForeground(dis, gc, Red.pixel);
-      XDrawPoint(dis,win,gc,px,py);        
+      Sierpinski prev(nIter-1,ox,oy);
+      for(int i=0; i<prev.nPoints; i=i+1){ // counter for prev fractal
+        double a[2] = {prev.data[2*i],prev.data[2*i+1]};
+        //std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl<<std::endl;
+        data[6*i] = a[0];
+        data[6*i+1] = a[1];
+        data[6*i+2] = a[0]-0.5*width;
+        data[6*i+3] = a[1]+8.660254037844386e-01*width;
+        data[6*i+4] = a[0]+0.5*width;
+        data[6*i+5] = data[6*i+3];        
+      }
+    }
+    return;
+  }
+  ~Sierpinski () {
+    free(data);
+  }
+
+  void draw (Display *dis, Window win, int solid = 0) {
+    XClearWindow(dis,win);
+    std::cout << data[0] << "," << data[1] << std::endl;
+    int s=XDefaultScreen(dis);
+    XSetForeground(dis, XDefaultGC(dis,s), _RGB(0,0,0x8B));
+
+
+    if(solid) {
+      XPoint *a = (XPoint*) malloc((this->nPoints)*sizeof(XPoint));
+      for(int i=0;i<nPoints;++i) {
+        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+      }
+      XFillPolygon(
+        dis,
+        win,
+        XDefaultGC(dis,s),
+        a,
+        nPoints,
+        Nonconvex,
+        CoordModeOrigin);
+      free(a);
+    } else {
+      XPoint *a = (XPoint*) malloc((this->nPoints+1)*sizeof(XPoint));
+      for(int i=0;i<nPoints;++i) {
+        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+      }
+      a[this->nPoints].x=a[0].x;a[this->nPoints].y=a[0].y;
+      XDrawLines(
+        dis,
+        win,
+        XDefaultGC(dis,s),
+        a,
+        nPoints+1,
+        CoordModeOrigin);
+      free(a);
     }
   }
 
-  return;
-}
+  void incIter () {
+    double *olddata = data;
 
+    nPoints = nPoints*4;
+    std::cout << "npoints = " << nPoints << std::endl;
+    nIter++;
+    data = (double *) malloc (2*nPoints*sizeof(double));
 
-void drawMandelbrot (Display *dis, int s,Window &win, GC gc){
+    for(int i=0; i<nPoints/4; i=i+1){ // counter for prev fractal
+      double a[2] = {olddata[2*i],olddata[2*i+1]};
+      double b[2] = {olddata[2*((i+1)%(nPoints/4))],
+                      olddata[2*((i+1)%(nPoints/4))+1]};
+      //std::cout << a[0]<<","<<a[1]<<"|"<<b[0]<<","<<b[1]<<std::endl<<std::endl;
+      data[8*i] = a[0];
+      data[8*i+1] = a[1];
+      data[8*i+2] = a[0]+(b[0]-a[0])*3.333333333333333e-01;
+      data[8*i+3] = a[1]+(b[1]-a[1])*3.333333333333333e-01;
+      data[8*i+6] = a[0]+(b[0]-a[0])*6.666666666666666e-01;
+      data[8*i+7] = a[1]+(b[1]-a[1])*6.666666666666666e-01;
+      data[8*i+4] = a[0]+0.5*(b[0]-a[0])+(b[1]-a[1])*2.886751345948129e-01;
+      data[8*i+5] = a[1]+0.5*(b[1]-a[1])+(a[0]-b[0])*2.886751345948129e-01;
+    }
 
-  XColor Red, Green, Blue;
-  XAllocNamedColor(dis, DefaultColormap(dis,s), "red", &Red, &Red);
-  XAllocNamedColor(dis, DefaultColormap(dis,s), "green", &Green, &Green);
-  XAllocNamedColor(dis, DefaultColormap(dis,s), "blue", &Blue, &Blue);
-  //const char *msg = "Hello, World!";
-
-  //XFillRectangle(dis, win, DefaultGC(dis, s), 1, 1, 10, 10);
-  //XDrawString(dis, win, DefaultGC(dis, s), 10, 50, msg, strlen(msg));
-  double x,y;
-  for(int px=0;px<winWidth;++px) for(int py=0;py<winHeight;++py) {
-    pixToXY(px,py,x,y);
-    double c=mandelbrot(x,y);
-    unsigned long cc = c*(1<<12);
-    if(c>4) {
-      //std::cout << c << std::endl;
-      XSetForeground(dis, gc, cc);
-      XDrawPoint(dis,win,gc,px,py);
-    } else {
-      XSetForeground(dis, gc, BlackPixel(dis, s));
-      XDrawPoint(dis,win,gc,px,py);
-    } 
+    free(olddata);
+    return;
   }
 
-  return;
+  void decIter () {
+    if (nIter == 0) return;
+    double *olddata = data;
+    nPoints = nPoints/4;
+    std::cout << "npoints = " << nPoints << std::endl;
+
+    nIter--;
+    data = (double *) malloc (2*nPoints*sizeof(double));
+    for(int i=0; i<nPoints; i=i+1){
+      data[2*i] = olddata[8*i];
+      data[2*i+1] = olddata[8*i+1];
+    }
+    free(olddata);
+    return;
+  }
+};
+
+
+
+std::ostream & operator<<(std::ostream &out, const Sierpinski &op) {
+  for(int i=0;i<op.nPoints;++i)
+    out << "["<<op.data[2*i]<<","<<op.data[2*i+1]<<"],"<<std::endl;
+  return out;
 }
 
-
 int main(void) {
-   Display *dis;
-   Window win;
-   GC gc;
-   XEvent e;
-   int s;
+  std::cout << std::fixed << std::setprecision(3);
+  Sierpinski kock;
+  int solid=1;
 
-   dis = XOpenDisplay(NULL);
-   if (dis == NULL) {
-      fprintf(stderr, "Cannot open display\n");
-      exit(1);
-   }
+  Display *dis;
+  Window win;
+  XEvent e;
+  int s;
 
-   s = DefaultScreen(dis);
-   win = XCreateSimpleWindow(dis, RootWindow(dis, s), 10, 10, 800, 600, 1,
-                           BlackPixel(dis, s), WhitePixel(dis, s));
-   XSelectInput(dis, win, ExposureMask | KeyPressMask | ButtonPressMask);
-   XMapWindow(dis, win);
-   gc=XCreateGC(dis, win, 0,0); 
+  dis = XOpenDisplay(NULL);
+  if (dis == NULL) {
+    fprintf(stderr, "Cannot open display\n");
+    exit(1);
+  }
 
-   int once=1;
-   while (1) {
-      XNextEvent(dis, &e);
-      if (once && e.type == Expose) {
-        once = 0;
-        drawMandelbrot(dis,s,win,gc);
-      }
-      if (e.type == ButtonPress) {
+  s = DefaultScreen(dis);
+  win = XCreateSimpleWindow(
+        dis, 
+        RootWindow(dis, s), 
+        10, 10, 
+        800, 
+        600, 
+        1,
+        BlackPixel(dis, s), 
+        WhitePixel(dis, s));
+
+  XSelectInput(dis, win, ExposureMask | KeyPressMask | ButtonPressMask);
+  XMapWindow(dis, win);
+
+  while (1) {
+    XNextEvent(dis, &e);
+    if (e.type == Expose) {
+      kock.draw(dis,win,solid);
+    }
+    if (e.type == ButtonPress) {
+      if(e.xbutton.button == 1) {
         pixToXY(e.xbutton.x,e.xbutton.y,CENTERX,CENTERY);
-        XWIDTH /= 2.0;
-        XHEIGHT /= 2.0;
-        drawMandelbrot(dis,s,win,gc);
+      } 
+      if(e.xbutton.button == 4) {
+        XWIDTH/=1.2;
+        XHEIGHT=(XWIDTH*winHeight)/winWidth;
+        std::cout << "Width = " << XWIDTH << std::endl;
+      } 
+      if(e.xbutton.button == 5) {
+        XWIDTH*=1.2;
+        XHEIGHT=(XWIDTH*winHeight)/winWidth;
+        std::cout << "Width = " << XWIDTH << std::endl;
       }
-      if (e.type == KeyPress)
-         break;
-   }
-   //XFreeGC(dis, gc)
-   XDestroyWindow(dis,win);
-   XCloseDisplay(dis);
-   return 0;
+      std::cout << "draw!"<<std::endl;
+      kock.draw(dis,win,solid);
+      XFlush(dis);
+    }
+    if (e.type == KeyPress){
+      std::cout << e.xkey.keycode << std::endl;
+      unsigned int key = e.xkey.keycode;
+      if(key == 38){
+        kock.incIter();
+      } else if (key == 52){
+        kock.decIter();
+      } else {
+        break;
+      }
+      kock.draw(dis,win,solid);
+      XFlush(dis);
+    }
+  }
+
+  XDestroyWindow(dis,win);
+  XCloseDisplay(dis);
+
+
+
+
+  return 0;
 }
