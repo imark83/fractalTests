@@ -124,13 +124,20 @@ public:
         XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
       }
       a[this->nPoints].x=a[0].x;a[this->nPoints].y=a[0].y;
-      XDrawLines(
-        dis,
-        win,
-        XDefaultGC(dis,s),
-        a,
-        nPoints+1,
-        CoordModeOrigin);
+      for(int i=0;i<nPoints;++i)
+        XDrawLine(
+          dis,
+          win,
+          XDefaultGC(dis,s),
+          a[i].x,a[i].y,
+          a[(i+1)%nPoints].x,a[(i+1)%nPoints].y);
+      // XDrawLines(
+      //   dis,
+      //   win,
+      //   XDefaultGC(dis,s),
+      //   a,
+      //   nPoints+1,
+      //   CoordModeOrigin);
       free(a);
     }
   }
@@ -190,7 +197,7 @@ std::ostream & operator<<(std::ostream &out, const Kock &op) {
 int main(void) {
   std::cout << std::fixed << std::setprecision(3);
   Kock kock;
-  int solid=1;
+  int solid=0;
 
   Display *dis;
   Window win;
