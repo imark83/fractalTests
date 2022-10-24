@@ -77,6 +77,7 @@ public:
         (unsigned char *) malloc (nPoints*sizeof(unsigned char));
     if (nIter == 0){
       pattern[0] = 0;
+      pattern[1] = 1;
     } else {
       Dragon prev(nIter-1,ox,oy);
       for(int i=0; i<(1<<nIter); i=i+1){ // counter for prev fractal
@@ -96,30 +97,34 @@ public:
     int s=XDefaultScreen(dis);
     XSetForeground(dis, XDefaultGC(dis,s), _RGB(0,0,0x8B));
 
+    XPoint a,b,c;
+    b.x=0.0;b.y=0.0;
+    c.x=1.0/(1<<nIter);c.y=0.0;
+    XDrawLine(
+        dis,
+        win,
+        XDefaultGC(dis,s),
+        b.x,b.y,
+        c.x,c.y);
 
-    if(solid) {
-    } else {
-      XPoint *a = (XPoint*) malloc((this->nPoints+1)*sizeof(XPoint));
-      for(int i=0;i<nPoints;++i) {
-        XYToPix(data[2*i],data[2*i+1],a[i].x,a[i].y);
+    for(int i=0;i<nPoints;++i) {
+      a.x=b.x;a.y=b.y;
+      b.x=c.x;b.y=c.y;
+      if(pattern[i]) {
+        c.x=b.x+(b.y-a.y);
+        c.y=b.y+(a.x-b.x);
+      } else {
+        c.x=b.x-(b.y-a.y);
+        c.y=b.y-(a.x-b.x);        
       }
-      a[this->nPoints].x=a[0].x;a[this->nPoints].y=a[0].y;
-      for(int i=0;i<nPoints;++i)
-        XDrawLine(
-          dis,
-          win,
-          XDefaultGC(dis,s),
-          a[i].x,a[i].y,
-          a[(i+1)%nPoints].x,a[(i+1)%nPoints].y);
-      // XDrawLines(
-      //   dis,
-      //   win,
-      //   XDefaultGC(dis,s),
-      //   a,
-      //   nPoints+1,
-      //   CoordModeOrigin);
-      free(a);
-    }
+
+    XDrawLine(
+        dis,
+        win,
+        XDefaultGC(dis,s),
+        b.x,b.y,
+        c.x,c.y);
+    }    
   }
 
   void incIter () {
@@ -150,7 +155,7 @@ public:
         (unsigned char *) malloc (nPoints*sizeof(unsigned char));
 
     for(int i=0; i<nPoints; i=i+1){
-      pattern[i]=oldpattern[2*i+1]
+      pattern[i]=oldpattern[2*i+1];
     }
     free(oldpattern);
     return;
